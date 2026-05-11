@@ -54,18 +54,58 @@
             font-weight: 600;
             color: #1e293b;
             padding: 2px 0;
+            transition: all 0.3s ease;
         }
-        .editable-input:focus {
-            outline: none;
-            border-bottom-color: #0068ff;
-            background: #f0f7ff;
+        .editable-input:disabled {
+            border-bottom: none;
+            cursor: default;
+            color: #64748b;
+        }
+
+        /* Modal Auth */
+        #auth-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .admin-only-badge {
+            display: none;
+        }
+        .is-admin .admin-only-badge {
+            display: flex;
         }
     </style>
 </head>
 <body class="text-slate-900 pb-12">
 
+    <!-- Auth Modal for Admin -->
+    <div id="auth-modal">
+        <div class="bg-white w-[90%] max-w-sm p-8 rounded-[2.5rem] shadow-2xl text-center space-y-6">
+            <div class="inline-flex zalo-blue p-4 rounded-2xl">
+                <i data-lucide="shield-check" class="w-8 h-8 text-white"></i>
+            </div>
+            <div>
+                <h3 class="text-lg font-bold">Xác minh Quản trị</h3>
+                <p class="text-xs text-slate-500">Vui lòng nhập mật mã để mở quyền chỉnh sửa</p>
+            </div>
+            <input type="password" id="admin-pass-input" 
+                   class="w-full px-4 py-3 bg-slate-100 rounded-2xl text-center text-lg font-bold tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                   placeholder="••••••••">
+            <div class="flex gap-3">
+                <button onclick="closeAuth()" class="flex-1 py-3 text-sm font-bold text-slate-500 bg-slate-100 rounded-2xl">Hủy</button>
+                <button onclick="verifyAdmin()" class="flex-1 py-3 text-sm font-bold text-white zalo-blue rounded-2xl shadow-lg shadow-blue-100">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Loading State -->
-    <div id="loader" class="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center transition-all duration-500">
+    <div id="loader" class="fixed inset-0 z-[9998] bg-white flex flex-col items-center justify-center transition-all duration-500">
         <div class="relative w-16 h-16 mb-4">
             <div class="absolute inset-0 border-4 border-blue-50 rounded-full"></div>
             <div class="absolute inset-0 border-4 border-t-blue-600 rounded-full animate-spin"></div>
@@ -73,243 +113,255 @@
         <p class="font-bold text-slate-400 text-[10px] tracking-widest uppercase">Ecohome Hub System</p>
     </div>
 
-    <!-- Header -->
-    <header class="p-4 md:px-8 md:py-5 flex justify-between items-center bg-white border-b border-slate-100 sticky top-0 z-40 shadow-sm">
-        <div class="flex items-center gap-4">
-            <div class="zalo-blue p-2.5 rounded-2xl">
-                <i data-lucide="layout-dashboard" class="w-6 h-6 text-white"></i>
-            </div>
-            <div>
-                <h1 class="text-lg font-extrabold tracking-tight">Ecohome Nhơn Bình</h1>
-                <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-green-500 pulse"></span>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase" id="current-time">00:00:00</p>
+    <div id="app-body">
+        <!-- Header -->
+        <header class="p-4 md:px-8 md:py-5 flex justify-between items-center bg-white border-b border-slate-100 sticky top-0 z-40 shadow-sm">
+            <div class="flex items-center gap-4">
+                <div class="zalo-blue p-2.5 rounded-2xl">
+                    <i data-lucide="building-2" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-extrabold tracking-tight">Ecohome Nhơn Bình</h1>
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-green-500 pulse"></span>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase" id="current-time">00:00:00</p>
+                    </div>
                 </div>
             </div>
-        </div>
-        
-        <div class="flex items-center gap-4">
-            <div class="hidden md:block text-right">
-                <p class="text-[10px] font-bold text-slate-400">ADMIN VIEW</p>
-                <p class="text-xs font-bold">Ban Quản Trị</p>
-            </div>
-            <div class="w-10 h-10 rounded-full bg-slate-100 border-2 border-white shadow-sm flex items-center justify-center">
-                <i data-lucide="user" class="w-5 h-5 text-slate-400"></i>
-            </div>
-        </div>
-    </header>
-
-    <main class="p-4 md:p-8 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        <!-- Left Column: Video & Members -->
-        <div class="lg:col-span-8 space-y-6">
             
-            <!-- VIDEO HUB -->
-            <div class="card-hub p-4 space-y-4">
-                <div class="flex items-center justify-between px-2">
-                    <h2 class="text-sm font-extrabold flex items-center gap-2 uppercase tracking-wide">
-                        <i data-lucide="video" class="w-4 h-4 zalo-text"></i> Live Broadcast Hub
-                    </h2>
-                    <div class="flex gap-2">
-                        <span class="bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
-                            LIVE
-                        </span>
+            <div class="flex items-center gap-3">
+                <div id="admin-status" class="hidden md:flex flex-col text-right mr-2">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Chế độ</p>
+                    <p id="mode-text" class="text-xs font-bold text-slate-600">Cư dân</p>
+                </div>
+                <button id="lock-btn" onclick="openAuth()" class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-blue-50 transition-colors">
+                    <i data-lucide="lock" class="w-5 h-5 text-slate-400" id="lock-icon"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="p-4 md:p-8 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Left Column: Video & Members -->
+            <div class="lg:col-span-8 space-y-6">
+                
+                <!-- VIDEO HUB -->
+                <div class="card-hub p-4 space-y-4">
+                    <div class="flex items-center justify-between px-2">
+                        <h2 class="text-sm font-extrabold flex items-center gap-2 uppercase tracking-wide">
+                            <i data-lucide="video" class="w-4 h-4 zalo-text"></i> Live Broadcast Hub
+                        </h2>
+                        <span class="bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">LIVE</span>
+                    </div>
+
+                    <div id="main-video-view" class="aspect-video relative group">
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="text-center">
+                                <i data-lucide="aperture" class="w-12 h-12 text-slate-700 animate-spin-slow mb-3 mx-auto"></i>
+                                <p class="text-slate-500 text-[10px] font-bold tracking-widest uppercase">Kết nối luồng trực tiếp...</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Control Overlay (Visible only to Admin or when interactive) -->
+                        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/40 backdrop-blur-md p-2 rounded-2xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button class="w-10 h-10 rounded-xl bg-white/10 hover:bg-blue-500 text-white flex items-center justify-center"><i data-lucide="maximize" class="w-4 h-4"></i></button>
+                            <button class="w-10 h-10 rounded-xl bg-white/10 hover:bg-blue-500 text-white flex items-center justify-center"><i data-lucide="volume-2" class="w-4 h-4"></i></button>
+                        </div>
                     </div>
                 </div>
 
-                <div id="main-video-view" class="aspect-video relative group">
-                    <div class="absolute inset-0 flex items-center justify-center">
-                        <div class="text-center">
-                            <i data-lucide="aperture" class="w-12 h-12 text-slate-700 animate-spin-slow mb-3 mx-auto"></i>
-                            <p class="text-slate-500 text-[10px] font-bold tracking-widest uppercase">Kết nối luồng trực tiếp...</p>
+                <!-- MEMBER HUB -->
+                <div class="card-hub p-6 space-y-6">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-sm font-extrabold flex items-center gap-2 uppercase tracking-wide">
+                            <i data-lucide="users" class="w-4 h-4 zalo-text"></i> Thành viên đang xem
+                        </h2>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest" id="user-count">0 Đang xem</span>
+                    </div>
+                    
+                    <div id="online-users-list" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-4 min-h-[100px]">
+                        <div class="col-span-full py-8 text-center border-2 border-dashed border-slate-100 rounded-2xl">
+                            <p class="text-slate-400 text-[10px] font-medium uppercase tracking-tight italic">Hệ thống đang đồng bộ cư dân...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: AI & Infrastructure -->
+            <div class="lg:col-span-4 space-y-6">
+                
+                <!-- AI CHAT HUB -->
+                <div class="card-hub flex flex-col h-[520px]">
+                    <div class="zalo-blue p-5 text-white flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-white/20 p-2 rounded-xl"><i data-lucide="bot" class="w-5 h-5"></i></div>
+                            <div>
+                                <h3 class="text-xs font-extrabold leading-tight uppercase">AI Assistant Hub</h3>
+                                <p class="text-[9px] text-blue-100 opacity-80">Hỗ trợ cư dân 24/7</p>
+                            </div>
                         </div>
                     </div>
                     
-                    <!-- Control Overlay -->
-                    <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/40 backdrop-blur-md p-2 rounded-2xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button class="w-10 h-10 rounded-xl bg-white/10 hover:bg-red-500 text-white flex items-center justify-center transition-colors"><i data-lucide="mic-off" class="w-4 h-4"></i></button>
-                        <button class="w-10 h-10 rounded-xl bg-white/10 hover:bg-blue-500 text-white flex items-center justify-center transition-colors"><i data-lucide="video" class="w-4 h-4"></i></button>
-                        <button class="w-10 h-10 rounded-xl bg-white/10 hover:bg-emerald-500 text-white flex items-center justify-center transition-colors"><i data-lucide="monitor-up" class="w-4 h-4"></i></button>
-                        <div class="w-px h-6 bg-white/20 mx-1"></div>
-                        <button class="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center animate-pulse"><i data-lucide="phone-off" class="w-4 h-4"></i></button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- MEMBER HUB -->
-            <div class="card-hub p-6 space-y-6">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-sm font-extrabold flex items-center gap-2 uppercase tracking-wide">
-                        <i data-lucide="users" class="w-4 h-4 zalo-text"></i> Member Participation Hub
-                    </h2>
-                    <span class="text-[10px] font-bold text-slate-400" id="user-count">0 THÀNH VIÊN</span>
-                </div>
-                
-                <div id="online-users-list" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-4">
-                    <!-- Dữ liệu Live thật sẽ đổ vào đây -->
-                    <div class="col-span-full py-8 text-center border-2 border-dashed border-slate-100 rounded-2xl">
-                        <i data-lucide="user-plus" class="w-8 h-8 text-slate-200 mx-auto mb-2"></i>
-                        <p class="text-slate-400 text-[10px] font-medium uppercase tracking-tight">Chưa có cư dân tham gia</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Column: AI & Infrastructure -->
-        <div class="lg:col-span-4 space-y-6">
-            
-            <!-- AI CHAT HUB -->
-            <div class="card-hub flex flex-col h-[550px]">
-                <div class="zalo-blue p-5 text-white flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="bg-white/20 p-2 rounded-xl">
-                            <i data-lucide="bot" class="w-5 h-5"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-xs font-extrabold leading-tight uppercase">AI Assistant Hub</h3>
-                            <p class="text-[9px] text-blue-100 opacity-80">Trực tuyến 24/7</p>
+                    <div id="chat-content" class="flex-1 p-5 flex flex-col gap-4 bg-slate-50/50">
+                        <div class="ai-msg p-4 text-xs shadow-sm max-w-[85%] leading-relaxed border border-slate-100">
+                            Chào cư dân! Tôi là trợ lý ảo hỗ trợ thông tin tòa nhà. Bạn cần giúp gì không?
                         </div>
                     </div>
-                </div>
-                
-                <div id="chat-content" class="flex-1 p-5 flex flex-col gap-4 bg-slate-50/50">
-                    <div class="ai-msg p-4 text-xs shadow-sm max-w-[85%] leading-relaxed border border-slate-100">
-                        Chào Ban Quản Trị! Tôi là trợ lý AI. Tôi đang hỗ trợ theo dõi các hub và trả lời thắc mắc của cư dân.
+
+                    <div class="p-4 bg-white border-t border-slate-100">
+                        <div class="flex gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                            <input type="text" id="ai-input" 
+                                   class="flex-1 bg-transparent border-none px-3 py-2 text-xs focus:outline-none" 
+                                   placeholder="Hỏi AI thông tin tòa nhà...">
+                            <button onclick="sendAIMessage()" id="ai-send-btn" class="zalo-blue text-white p-2 rounded-lg transition-all active:scale-95">
+                                <i data-lucide="send" class="w-4 h-4"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="p-4 bg-white border-t border-slate-100">
-                    <div class="flex gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                        <input type="text" id="ai-input" 
-                               class="flex-1 bg-transparent border-none px-3 py-2 text-xs focus:outline-none" 
-                               placeholder="Gửi thông báo hoặc hỏi AI..."
-                               onkeypress="if(event.key === 'Enter') sendAIMessage()">
-                        <button onclick="sendAIMessage()" id="ai-send-btn" class="zalo-blue text-white p-2 rounded-lg transition-all active:scale-95">
-                            <i data-lucide="send" class="w-4 h-4"></i>
-                        </button>
+                <!-- INFRASTRUCTURE HUB (EDITABLE ONLY IN ADMIN MODE) -->
+                <div id="infra-hub" class="card-hub p-6 space-y-5 transition-all duration-500">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-sm font-extrabold flex items-center gap-2 uppercase tracking-wide">
+                            <i data-lucide="settings-2" class="w-4 h-4 zalo-text"></i> Hạ tầng kỹ thuật
+                        </h2>
+                        <span id="admin-badge" class="admin-only-badge items-center gap-1 bg-blue-100 text-blue-600 px-2 py-0.5 rounded text-[8px] font-black uppercase">Admin</span>
                     </div>
+                    
+                    <div class="space-y-4">
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                            <input type="text" class="editable-input text-[9px] uppercase text-slate-400 mb-1 admin-field" value="Thang máy Block A" disabled>
+                            <input type="text" class="editable-input text-xs text-emerald-600 admin-field" value="Hoạt động bình thường" disabled>
+                        </div>
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                            <input type="text" class="editable-input text-[9px] uppercase text-slate-400 mb-1 admin-field" value="Hệ thống PCCC" disabled>
+                            <input type="text" class="editable-input text-xs text-blue-600 admin-field" value="Đang kiểm tra định kỳ" disabled>
+                        </div>
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                            <input type="text" class="editable-input text-[9px] uppercase text-slate-400 mb-1 admin-field" value="Bể bơi tầng 3" disabled>
+                            <input type="text" class="editable-input text-xs text-amber-600 admin-field" value="Vệ sinh: 14h - 16h" disabled>
+                        </div>
+                    </div>
+                    
+                    <p class="text-[9px] text-slate-400 italic text-center" id="infra-hint">Dành cho cư dân theo dõi</p>
                 </div>
             </div>
-
-            <!-- INFRASTRUCTURE HUB (ADMIN EDITABLE) -->
-            <div class="card-hub p-6 space-y-5">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-sm font-extrabold flex items-center gap-2 uppercase tracking-wide">
-                        <i data-lucide="settings" class="w-4 h-4 zalo-text"></i> Infra Hub (Admin)
-                    </h2>
-                </div>
-                
-                <div class="space-y-5">
-                    <!-- Item 1 -->
-                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                        <div class="flex justify-between items-center mb-2">
-                            <input type="text" class="editable-input text-[10px] uppercase text-slate-400" value="Thang máy Block A">
-                        </div>
-                        <input type="text" class="editable-input text-xs text-emerald-600" value="Hoạt động bình thường">
-                    </div>
-                    <!-- Item 2 -->
-                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                        <div class="flex justify-between items-center mb-2">
-                            <input type="text" class="editable-input text-[10px] uppercase text-slate-400" value="Hệ thống PCCC">
-                        </div>
-                        <input type="text" class="editable-input text-xs text-blue-600" value="Đang kiểm định định kỳ">
-                    </div>
-                    <!-- Item 3 -->
-                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                        <div class="flex justify-between items-center mb-2">
-                            <input type="text" class="editable-input text-[10px] uppercase text-slate-400" value="Bể bơi tầng 3">
-                        </div>
-                        <input type="text" class="editable-input text-xs text-amber-600" value="Vệ sinh: 14h - 16h">
-                    </div>
-                </div>
-                <div class="flex items-center gap-2 text-[9px] text-slate-400 bg-slate-50 p-2 rounded-lg">
-                    <i data-lucide="info" class="w-3 h-3"></i>
-                    <span>Nội dung tự động lưu sau khi nhập</span>
-                </div>
-            </div>
-        </div>
-    </main>
+        </main>
+    </div>
 
     <script>
         const apiKey = ""; 
+        const ADMIN_CODE = "215151365";
+        let isAdmin = false;
+
+        // --- AUTH LOGIC ---
+        function openAuth() {
+            if (isAdmin) {
+                logout();
+                return;
+            }
+            document.getElementById('auth-modal').style.display = 'flex';
+            document.getElementById('admin-pass-input').focus();
+        }
+
+        function closeAuth() {
+            document.getElementById('auth-modal').style.display = 'none';
+            document.getElementById('admin-pass-input').value = "";
+        }
+
+        function verifyAdmin() {
+            const pass = document.getElementById('admin-pass-input').value;
+            if (pass === ADMIN_CODE) {
+                isAdmin = true;
+                applyAdminMode();
+                closeAuth();
+            } else {
+                alert("Mật mã không đúng.");
+                document.getElementById('admin-pass-input').value = "";
+            }
+        }
+
+        function applyAdminMode() {
+            // UI Changes
+            document.body.classList.add('is-admin');
+            document.getElementById('lock-icon').setAttribute('data-lucide', 'unlock');
+            document.getElementById('lock-btn').classList.replace('bg-slate-100', 'bg-blue-600');
+            document.getElementById('lock-btn').classList.add('text-white');
+            document.getElementById('lock-icon').classList.replace('text-slate-400', 'text-white');
+            document.getElementById('mode-text').innerText = "Quản trị viên";
+            document.getElementById('mode-text').classList.add('text-blue-600');
+            document.getElementById('infra-hint').innerText = "Chế độ chỉnh sửa đang bật";
+            document.getElementById('infra-hint').classList.add('text-blue-500', 'font-bold');
+            document.getElementById('admin-badge').style.display = 'flex';
+
+            // Enable inputs
+            document.querySelectorAll('.admin-field').forEach(el => {
+                el.disabled = false;
+                el.classList.add('hover:bg-blue-50');
+            });
+
+            lucide.createIcons();
+        }
+
+        function logout() {
+            isAdmin = false;
+            location.reload();
+        }
 
         // --- AI ASSISTANT ---
         async function askAI(userQuery) {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
-                systemInstruction: { parts: [{ text: "Bạn là trợ lý ảo hỗ trợ BQT Ecohome Nhơn Bình. Phản hồi ngắn gọn, tập trung vào công việc quản lý tòa nhà và hỗ trợ cư dân." }] }
+                systemInstruction: { parts: [{ text: "Bạn là AI hỗ trợ Ecohome Nhơn Bình. Trả lời cư dân ngắn gọn, lịch sự về các vấn đề đời sống chung cư." }] }
             };
 
-            let delay = 1000;
-            for (let i = 0; i < 5; i++) {
-                try {
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
-                        return data.candidates?.[0]?.content?.parts?.[0]?.text || "...";
-                    }
-                } catch (e) {}
-                await new Promise(r => setTimeout(r, delay));
-                delay *= 2;
-            }
-            return "Không thể kết nối AI lúc này.";
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.candidates?.[0]?.content?.parts?.[0]?.text || "...";
+                }
+            } catch (e) { return "AI đang bận, vui lòng thử lại sau."; }
         }
 
         async function sendAIMessage() {
             const input = document.getElementById('ai-input');
             const content = document.getElementById('chat-content');
-            const btn = document.getElementById('ai-send-btn');
             const text = input.value.trim();
-
             if (!text) return;
 
-            content.innerHTML += `<div class="user-msg p-3 text-xs shadow-sm max-w-[85%] self-end"><b>Admin:</b> ${text}</div>`;
+            content.innerHTML += `<div class="user-msg p-3 text-xs shadow-sm max-w-[85%] self-end">${text}</div>`;
             input.value = "";
-            input.disabled = true;
-            btn.disabled = true;
             content.scrollTop = content.scrollHeight;
 
-            const loadingId = 'loading-' + Date.now();
-            content.innerHTML += `<div id="${loadingId}" class="ai-msg p-3 text-[10px] italic text-slate-400">AI đang xử lý...</div>`;
+            const reply = await askAI(text);
+            content.innerHTML += `<div class="ai-msg p-4 text-xs shadow-sm max-w-[85%] border border-slate-100">${reply}</div>`;
             content.scrollTop = content.scrollHeight;
-
-            try {
-                const reply = await askAI(text);
-                document.getElementById(loadingId).remove();
-                content.innerHTML += `<div class="ai-msg p-4 text-xs shadow-sm max-w-[85%] border border-slate-100"><b>AI:</b> ${reply}</div>`;
-            } catch {
-                document.getElementById(loadingId).innerText = "Lỗi phản hồi.";
-            } finally {
-                input.disabled = false;
-                btn.disabled = false;
-                input.focus();
-                content.scrollTop = content.scrollHeight;
-            }
         }
 
-        // --- DASHBOARD INIT ---
+        // --- INIT ---
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
-            
-            // Đồng hồ hệ thống
             setInterval(() => { 
                 const el = document.getElementById('current-time'); 
                 if (el) el.innerText = new Date().toLocaleTimeString('vi-VN'); 
             }, 1000);
             
-            // Xử lý loader
             setTimeout(() => { 
-                const loader = document.getElementById('loader');
-                if (loader) { 
-                    loader.style.opacity = '0'; 
-                    setTimeout(() => loader.style.display='none', 500); 
-                } 
+                document.getElementById('loader').style.opacity = '0';
+                setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
             }, 1000);
+
+            // Gửi tin nhắn bằng phím Enter
+            document.getElementById('ai-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendAIMessage();
+            });
         });
     </script>
 </body>
