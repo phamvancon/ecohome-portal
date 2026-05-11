@@ -32,6 +32,16 @@
             overflow: hidden; 
             position: relative; 
             background: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #local-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
         }
         
         .pulse { animation: pulse-animation 2s infinite; }
@@ -41,7 +51,6 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         
-        /* AI Chat Box */
         #chat-content { height: 400px; overflow-y: auto; scroll-behavior: smooth; }
         .user-msg { background-color: #0068ff; color: white; border-radius: 1.25rem 1.25rem 0 1.25rem; align-self: flex-end; }
         .ai-msg { background-color: #f1f5f9; color: #1e293b; border-radius: 1.25rem 1.25rem 1.25rem 0; align-self: flex-start; }
@@ -62,7 +71,6 @@
             color: #64748b;
         }
 
-        /* Modal Auth */
         #auth-modal {
             position: fixed;
             inset: 0;
@@ -74,11 +82,12 @@
             justify-content: center;
         }
         
-        .admin-only-badge {
-            display: none;
-        }
-        .is-admin .admin-only-badge {
-            display: flex;
+        .admin-only-badge { display: none; }
+        .is-admin .admin-only-badge { display: flex; }
+
+        .active-stream-btn {
+            background-color: #ef4444 !important;
+            color: white !important;
         }
     </style>
 </head>
@@ -123,7 +132,7 @@
                 <div>
                     <h1 class="text-lg font-extrabold tracking-tight">Ecohome Nhơn Bình</h1>
                     <div class="flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-green-500 pulse"></span>
+                        <span id="stream-status-dot" class="w-2 h-2 rounded-full bg-slate-300"></span>
                         <p class="text-[10px] font-bold text-slate-400 uppercase" id="current-time">00:00:00</p>
                     </div>
                 </div>
@@ -151,21 +160,31 @@
                         <h2 class="text-sm font-extrabold flex items-center gap-2 uppercase tracking-wide">
                             <i data-lucide="video" class="w-4 h-4 zalo-text"></i> Live Broadcast Hub
                         </h2>
-                        <span class="bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">LIVE</span>
+                        <span id="live-badge" class="hidden bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full items-center gap-1 animate-pulse">LIVE</span>
                     </div>
 
                     <div id="main-video-view" class="aspect-video relative group">
-                        <div class="absolute inset-0 flex items-center justify-center">
-                            <div class="text-center">
-                                <i data-lucide="aperture" class="w-12 h-12 text-slate-700 animate-spin-slow mb-3 mx-auto"></i>
-                                <p class="text-slate-500 text-[10px] font-bold tracking-widest uppercase">Kết nối luồng trực tiếp...</p>
-                            </div>
+                        <!-- Placeholder -->
+                        <div id="stream-placeholder" class="text-center">
+                            <i data-lucide="camera-off" class="w-12 h-12 text-slate-200 mb-3 mx-auto"></i>
+                            <p class="text-slate-400 text-[10px] font-bold tracking-widest uppercase">Chưa có tín hiệu phát</p>
                         </div>
+
+                        <!-- Video Element -->
+                        <video id="local-video" autoplay playsinline muted></video>
                         
-                        <!-- Control Overlay (Visible only to Admin or when interactive) -->
-                        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/40 backdrop-blur-md p-2 rounded-2xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button class="w-10 h-10 rounded-xl bg-white/10 hover:bg-blue-500 text-white flex items-center justify-center"><i data-lucide="maximize" class="w-4 h-4"></i></button>
-                            <button class="w-10 h-10 rounded-xl bg-white/10 hover:bg-blue-500 text-white flex items-center justify-center"><i data-lucide="volume-2" class="w-4 h-4"></i></button>
+                        <!-- Control Overlay -->
+                        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/60 backdrop-blur-md p-2 rounded-2xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            <button id="btn-camera" onclick="toggleCamera()" class="w-10 h-10 rounded-xl bg-white/10 hover:bg-blue-500 text-white flex items-center justify-center transition-all" title="Bật/Tắt Camera">
+                                <i data-lucide="camera" class="w-4 h-4"></i>
+                            </button>
+                            <button id="btn-screen" onclick="toggleScreenShare()" class="w-10 h-10 rounded-xl bg-white/10 hover:bg-emerald-500 text-white flex items-center justify-center transition-all" title="Chia sẻ màn hình">
+                                <i data-lucide="monitor" class="w-4 h-4"></i>
+                            </button>
+                            <div class="w-px h-6 bg-white/20 mx-1"></div>
+                            <button onclick="stopAllStreams()" class="w-10 h-10 rounded-xl bg-red-600/20 hover:bg-red-600 text-white flex items-center justify-center transition-all" title="Dừng phát">
+                                <i data-lucide="square" class="w-4 h-4"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -180,8 +199,12 @@
                     </div>
                     
                     <div id="online-users-list" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-4 min-h-[100px]">
-                        <div class="col-span-full py-8 text-center border-2 border-dashed border-slate-100 rounded-2xl">
-                            <p class="text-slate-400 text-[10px] font-medium uppercase tracking-tight italic">Hệ thống đang đồng bộ cư dân...</p>
+                        <!-- Mock Users -->
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center border-2 border-white shadow-sm">
+                                <span class="text-[10px] font-bold text-blue-600">AD</span>
+                            </div>
+                            <span class="text-[8px] font-bold text-slate-400 uppercase">Admin</span>
                         </div>
                     </div>
                 </div>
@@ -220,7 +243,7 @@
                     </div>
                 </div>
 
-                <!-- INFRASTRUCTURE HUB (EDITABLE ONLY IN ADMIN MODE) -->
+                <!-- INFRASTRUCTURE HUB -->
                 <div id="infra-hub" class="card-hub p-6 space-y-5 transition-all duration-500">
                     <div class="flex items-center justify-between">
                         <h2 class="text-sm font-extrabold flex items-center gap-2 uppercase tracking-wide">
@@ -243,8 +266,6 @@
                             <input type="text" class="editable-input text-xs text-amber-600 admin-field" value="Vệ sinh: 14h - 16h" disabled>
                         </div>
                     </div>
-                    
-                    <p class="text-[9px] text-slate-400 italic text-center" id="infra-hint">Dành cho cư dân theo dõi</p>
                 </div>
             </div>
         </main>
@@ -254,13 +275,86 @@
         const apiKey = ""; 
         const ADMIN_CODE = "215151365";
         let isAdmin = false;
+        let currentStream = null;
+
+        // --- STREAM LOGIC ---
+        async function toggleCamera() {
+            try {
+                if (currentStream) stopAllStreams();
+                
+                currentStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 1280, height: 720 }, 
+                    audio: true 
+                });
+                
+                showStream(currentStream);
+                document.getElementById('btn-camera').classList.add('active-stream-btn');
+                document.getElementById('btn-screen').classList.remove('active-stream-btn');
+            } catch (err) {
+                console.error("Camera Error:", err);
+                alert("Không thể truy cập Camera. Hãy đảm bảo bạn đã cấp quyền.");
+            }
+        }
+
+        async function toggleScreenShare() {
+            try {
+                if (currentStream) stopAllStreams();
+                
+                currentStream = await navigator.mediaDevices.getDisplayMedia({ 
+                    video: true,
+                    audio: true
+                });
+                
+                showStream(currentStream);
+                document.getElementById('btn-screen').classList.add('active-stream-btn');
+                document.getElementById('btn-camera').classList.remove('active-stream-btn');
+                
+                // Tự động dừng khi người dùng nhấn "Stop sharing" của trình duyệt
+                currentStream.getVideoTracks()[0].onended = () => stopAllStreams();
+            } catch (err) {
+                console.error("Screen Share Error:", err);
+            }
+        }
+
+        function showStream(stream) {
+            const video = document.getElementById('local-video');
+            const placeholder = document.getElementById('stream-placeholder');
+            const liveBadge = document.getElementById('live-badge');
+            const dot = document.getElementById('stream-status-dot');
+
+            video.srcObject = stream;
+            video.style.display = 'block';
+            placeholder.style.display = 'none';
+            liveBadge.style.display = 'flex';
+            dot.classList.replace('bg-slate-300', 'bg-red-500');
+            dot.classList.add('pulse');
+        }
+
+        function stopAllStreams() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+            }
+            
+            const video = document.getElementById('local-video');
+            const placeholder = document.getElementById('stream-placeholder');
+            const liveBadge = document.getElementById('live-badge');
+            const dot = document.getElementById('stream-status-dot');
+
+            video.srcObject = null;
+            video.style.display = 'none';
+            placeholder.style.display = 'block';
+            liveBadge.style.display = 'none';
+            dot.classList.replace('bg-red-500', 'bg-slate-300');
+            dot.classList.remove('pulse');
+
+            document.getElementById('btn-camera').classList.remove('active-stream-btn');
+            document.getElementById('btn-screen').classList.remove('active-stream-btn');
+        }
 
         // --- AUTH LOGIC ---
         function openAuth() {
-            if (isAdmin) {
-                logout();
-                return;
-            }
+            if (isAdmin) { logout(); return; }
             document.getElementById('auth-modal').style.display = 'flex';
             document.getElementById('admin-pass-input').focus();
         }
@@ -283,7 +377,6 @@
         }
 
         function applyAdminMode() {
-            // UI Changes
             document.body.classList.add('is-admin');
             document.getElementById('lock-icon').setAttribute('data-lucide', 'unlock');
             document.getElementById('lock-btn').classList.replace('bg-slate-100', 'bg-blue-600');
@@ -291,21 +384,14 @@
             document.getElementById('lock-icon').classList.replace('text-slate-400', 'text-white');
             document.getElementById('mode-text').innerText = "Quản trị viên";
             document.getElementById('mode-text').classList.add('text-blue-600');
-            document.getElementById('infra-hint').innerText = "Chế độ chỉnh sửa đang bật";
-            document.getElementById('infra-hint').classList.add('text-blue-500', 'font-bold');
             document.getElementById('admin-badge').style.display = 'flex';
-
-            // Enable inputs
-            document.querySelectorAll('.admin-field').forEach(el => {
-                el.disabled = false;
-                el.classList.add('hover:bg-blue-50');
-            });
-
+            document.querySelectorAll('.admin-field').forEach(el => el.disabled = false);
             lucide.createIcons();
         }
 
         function logout() {
             isAdmin = false;
+            stopAllStreams();
             location.reload();
         }
 
@@ -358,7 +444,6 @@
                 setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
             }, 1000);
 
-            // Gửi tin nhắn bằng phím Enter
             document.getElementById('ai-input').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') sendAIMessage();
             });
