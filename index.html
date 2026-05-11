@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi"> 
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,7 +10,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
-            background-color: #f1f5f9;
+            background-color: #f8fafc;
             margin: 0;
             padding: 0;
             overflow-x: hidden;
@@ -19,692 +19,298 @@
         .zalo-blue { background-color: #0068ff; }
         .zalo-text { color: #0068ff; }
         
-        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
-        .card-anim { transition: all 0.3s ease; }
-        .card-anim:hover { transform: translateY(-5px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
-        
-        #chat-messages::-webkit-scrollbar { width: 4px; }
-        #chat-messages::-webkit-scrollbar-track { background: transparent; }
-        #chat-messages::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        .card-hub { 
+            background: white; 
+            border-radius: 1.5rem; 
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
 
-        .zoom-dark { background-color: #0f172a; }
-        .chat-bubble-me {
-            background: #0068ff;
-            color: white;
-            border-radius: 12px 12px 2px 12px;
+        #main-video-view { 
+            border-radius: 1rem; 
+            overflow: hidden; 
+            position: relative; 
+            background: #0f172a;
         }
-        .chat-bubble-other {
-            background: #334155;
-            color: #f1f5f9;
-            border-radius: 12px 12px 12px 2px;
-        }
-        .live-pulse {
-            animation: pulse-red 1.5s infinite;
-        }
-        @keyframes pulse-red {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(0.98); }
-            100% { opacity: 1; transform: scale(1); }
-        }
-        #local-video {
+        
+        .pulse { animation: pulse-animation 2s infinite; }
+        @keyframes pulse-animation { 0% { transform: scale(0.95); opacity: 0.7; } 50% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(0.95); opacity: 0.7; } }
+        
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        
+        /* AI Chat Box */
+        #chat-content { height: 400px; overflow-y: auto; scroll-behavior: smooth; }
+        .user-msg { background-color: #0068ff; color: white; border-radius: 1.25rem 1.25rem 0 1.25rem; align-self: flex-end; }
+        .ai-msg { background-color: #f1f5f9; color: #1e293b; border-radius: 1.25rem 1.25rem 1.25rem 0; align-self: flex-start; }
+        
+        .editable-input { 
+            background: transparent; 
+            border: none; 
+            border-bottom: 1px dashed #cbd5e1; 
             width: 100%;
-            height: 100%;
-            object-fit: contain;
-            border-radius: 1.5rem;
-            background: #000;
+            font-weight: 600;
+            color: #1e293b;
+            padding: 2px 0;
         }
-        .mirror-mode {
-            transform: scaleX(-1);
-        }
-        .shake-anim {
-            animation: shake 0.4s ease-in-out;
-        }
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-8px); }
-            75% { transform: translateX(8px); }
-        }
-        #app-loader {
-            position: fixed;
-            inset: 0;
-            background: white;
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.5s;
+        .editable-input:focus {
+            outline: none;
+            border-bottom-color: #0068ff;
+            background: #f0f7ff;
         }
     </style>
 </head>
-<body class="transition-colors duration-500">
+<body class="text-slate-900 pb-12">
 
-    <div id="app-loader">
-        <div class="flex flex-col items-center gap-4">
-            <div class="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
-            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Đang kết nối Ecohome...</p>
+    <!-- Loading State -->
+    <div id="loader" class="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center transition-all duration-500">
+        <div class="relative w-16 h-16 mb-4">
+            <div class="absolute inset-0 border-4 border-blue-50 rounded-full"></div>
+            <div class="absolute inset-0 border-4 border-t-blue-600 rounded-full animate-spin"></div>
         </div>
+        <p class="font-bold text-slate-400 text-[10px] tracking-widest uppercase">Ecohome Hub System</p>
     </div>
 
-    <!-- Login Overlay -->
-    <div id="login-overlay" class="fixed inset-0 z-[200] bg-slate-950 flex items-center justify-center p-4 transition-all duration-500">
-        <div id="login-card" class="bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl text-center border border-slate-100">
-            <div class="w-20 h-20 zalo-blue rounded-3xl flex items-center justify-center text-white mx-auto mb-6 shadow-2xl">
-                <i data-lucide="shield-check" class="w-10 h-10"></i>
+    <!-- Header -->
+    <header class="p-4 md:px-8 md:py-5 flex justify-between items-center bg-white border-b border-slate-100 sticky top-0 z-40 shadow-sm">
+        <div class="flex items-center gap-4">
+            <div class="zalo-blue p-2.5 rounded-2xl">
+                <i data-lucide="layout-dashboard" class="w-6 h-6 text-white"></i>
             </div>
-            <h2 class="text-2xl font-black mb-1 tracking-tighter text-slate-900 text-center">Quản Trị Ecohome</h2>
-            <p class="text-slate-500 text-[10px] mb-8 font-bold uppercase tracking-widest leading-loose text-center">Xác thực để mở bảng điều khiển</p>
-            
-            <div class="relative mb-4">
-                <input type="password" id="admin-pin" placeholder="Nhập mã PIN" autocomplete="off"
-                       class="w-full text-center text-2xl p-4 bg-slate-50 border-2 border-slate-100 rounded-3xl focus:border-blue-500 focus:bg-white outline-none transition-all shadow-inner">
-                <button type="button" id="toggle-pin-view" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition">
-                    <i data-lucide="eye" id="pin-icon" class="w-5 h-5"></i>
-                </button>
-            </div>
-            
-            <div id="login-error" class="text-red-500 text-[10px] font-bold mb-4 hidden tracking-widest text-center uppercase italic">Mã PIN chưa chính xác</div>
-            
-            <button id="btn-login-confirm" class="w-full zalo-blue text-white py-4 rounded-[1.5rem] font-bold shadow-xl hover:opacity-90 active:scale-95 transition-all mb-4 text-sm tracking-widest">
-                ĐĂNG NHẬP ADMIN
-            </button>
-            <button id="btn-bypass" class="text-slate-400 text-[10px] font-bold hover:text-blue-500 underline uppercase tracking-tighter transition text-center w-full">Xem với tư cách cư dân</button>
-        </div>
-    </div>
-
-    <!-- Admin Status Bar -->
-    <div id="admin-status-bar" class="hidden bg-slate-900 text-white py-2 px-6 flex flex-wrap justify-between items-center text-[10px] font-bold tracking-widest sticky top-0 z-[110] shadow-2xl gap-3">
-        <div class="flex items-center gap-3">
-            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_#22c55e]"></div>
-            QUẢN TRỊ VIÊN ĐANG ONLINE
-        </div>
-        <div class="flex gap-4">
-            <button id="btn-popout-admin" class="bg-blue-600 px-3 py-1.5 rounded-lg text-white hover:bg-blue-500 transition flex items-center gap-1.5 shadow-lg">
-                <i data-lucide="external-link" class="w-3.5 h-3.5"></i> MỞ TRANG LIVE RIÊNG
-            </button>
-            <button id="btn-toggle-settings" class="hover:text-blue-400 flex items-center gap-1.5 transition">
-                <i data-lucide="settings" class="w-3.5 h-3.5"></i> CẤU HÌNH DATA
-            </button>
-            <button onclick="location.reload()" class="hover:text-red-400 flex items-center gap-1.5 transition">
-                <i data-lucide="log-out" class="w-3.5 h-3.5"></i> THOÁT
-            </button>
-        </div>
-    </div>
-
-    <!-- Settings Modal -->
-    <div id="settings-modal" class="fixed inset-0 z-[150] hidden flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
-        <div class="bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-slate-100 my-auto">
-            <div class="flex items-center gap-3 mb-6">
-                <div class="p-2 bg-blue-50 rounded-xl text-blue-600"><i data-lucide="database"></i></div>
-                <h3 class="text-xl font-black text-slate-900">Cài đặt hệ thống</h3>
-            </div>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Link Google Sheets (CSV)</label>
-                    <textarea id="sheet-url" rows="3" placeholder="https://docs.google.com/spreadsheets/..." 
-                           class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-blue-500 outline-none text-[10px] font-mono leading-relaxed mt-1"></textarea>
-                </div>
-
-                <div>
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cấu hình Firebase (JSON)</label>
-                    <textarea id="firebase-config-input" rows="5" placeholder='{"apiKey": "...", "authDomain": "..."}' 
-                           class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-blue-500 outline-none text-[10px] font-mono leading-relaxed mt-1"></textarea>
-                    <p class="text-[9px] text-slate-400 italic mt-1">* Dán Firebase Config của bạn để ghi đè cấu hình mặc định.</p>
+            <div>
+                <h1 class="text-lg font-extrabold tracking-tight">Ecohome Nhơn Bình</h1>
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-green-500 pulse"></span>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase" id="current-time">00:00:00</p>
                 </div>
             </div>
-            
-            <div class="flex gap-3 mt-8">
-                <button id="btn-save-settings" class="flex-1 zalo-blue text-white py-4 rounded-2xl font-bold shadow-lg hover:opacity-90">LƯU & ĐỒNG BỘ</button>
-                <button id="btn-close-settings" class="flex-1 bg-slate-100 py-4 rounded-2xl font-bold hover:bg-slate-200 transition">ĐÓNG</button>
-            </div>
         </div>
-    </div>
-
-    <!-- Main Content -->
-    <main id="main-content" class="max-w-7xl mx-auto px-4 py-8 space-y-12 opacity-0 transition-opacity duration-700">
         
-        <!-- Header -->
-        <header class="flex flex-col md:flex-row justify-between items-center gap-6 pb-4 border-b border-slate-200">
-            <div class="flex items-center gap-4 text-center md:text-left">
-                <div class="w-14 h-14 zalo-blue rounded-2xl flex items-center justify-center text-white shadow-2xl mx-auto">
-                    <i data-lucide="home" class="w-7 h-7"></i>
-                </div>
-                <div>
-                    <h1 class="text-3xl font-black tracking-tighter text-slate-900">Ecohome <span class="zalo-text italic">Nhơn Bình</span></h1>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-[0.3em]">Cổng thông tin cư dân chính thức</p>
-                </div>
+        <div class="flex items-center gap-4">
+            <div class="hidden md:block text-right">
+                <p class="text-[10px] font-bold text-slate-400">ADMIN VIEW</p>
+                <p class="text-xs font-bold">Ban Quản Trị</p>
             </div>
-            <a id="hero-group-link" href="https://zalo.me/g/bz81g86wvlwnefhmwbn0" target="_blank" class="zalo-blue text-white px-8 py-3.5 rounded-2xl text-[12px] font-black flex items-center gap-2 shadow-xl hover:scale-105 transition-all">
-                <i data-lucide="users" class="w-5 h-5"></i> THAM GIA GROUP CHÍNH
-            </a>
-        </header>
+            <div class="w-10 h-10 rounded-full bg-slate-100 border-2 border-white shadow-sm flex items-center justify-center">
+                <i data-lucide="user" class="w-5 h-5 text-slate-400"></i>
+            </div>
+        </div>
+    </header>
 
-        <!-- LIVE STUDIO -->
-        <section id="live-studio" class="max-w-7xl mx-auto">
-            <div class="zoom-dark rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col lg:flex-row h-auto lg:h-[650px] border border-slate-800">
-                <div class="flex-1 p-6 flex flex-col relative min-h-[400px]">
-                    <div class="flex justify-between items-center mb-5">
-                        <div class="flex items-center gap-3">
-                            <span class="flex items-center gap-1.5 bg-red-600 text-white text-[11px] font-black px-3 py-1 rounded-full live-pulse">
-                                <span class="w-1.5 h-1.5 bg-white rounded-full"></span> LIVE
-                            </span>
-                            <span id="meeting-label" class="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">Truyền hình cư dân</span>
+    <main class="p-4 md:p-8 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Column: Video & Members -->
+        <div class="lg:col-span-8 space-y-6">
+            
+            <!-- VIDEO HUB -->
+            <div class="card-hub p-4 space-y-4">
+                <div class="flex items-center justify-between px-2">
+                    <h2 class="text-sm font-extrabold flex items-center gap-2 uppercase tracking-wide">
+                        <i data-lucide="video" class="w-4 h-4 zalo-text"></i> Live Broadcast Hub
+                    </h2>
+                    <div class="flex gap-2">
+                        <span class="bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
+                            LIVE
+                        </span>
+                    </div>
+                </div>
+
+                <div id="main-video-view" class="aspect-video relative group">
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="text-center">
+                            <i data-lucide="aperture" class="w-12 h-12 text-slate-700 animate-spin-slow mb-3 mx-auto"></i>
+                            <p class="text-slate-500 text-[10px] font-bold tracking-widest uppercase">Kết nối luồng trực tiếp...</p>
                         </div>
-                        <div class="text-slate-500 text-xs font-bold font-mono" id="current-time">00:00:00</div>
                     </div>
                     
-                    <div id="video-container" class="flex-1 bg-slate-900 rounded-[2rem] flex flex-col items-center justify-center relative overflow-hidden shadow-inner border border-white/5">
-                        <div id="live-viewport" class="absolute inset-0 z-0 flex items-center justify-center w-full h-full">
-                            <div id="video-placeholder" class="text-center p-10">
-                                <div class="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-8 border-2 border-slate-700 shadow-2xl text-center">
-                                    <i data-lucide="video" class="w-10 h-10 text-slate-600 mx-auto"></i>
-                                </div>
-                                <h3 id="meeting-title" class="text-slate-300 text-2xl font-black mb-3 text-center">Đang chờ Admin...</h3>
-                                <p id="meeting-desc" class="text-slate-500 text-sm max-w-md mx-auto leading-relaxed italic text-center text-center">Màn hình họp trực tuyến sẽ hiển thị khi Admin bắt đầu chia sẻ.</p>
-                            </div>
-                            <video id="local-video" class="hidden" autoplay playsinline muted></video>
-                        </div>
-                        
-                        <a id="meeting-btn" href="#" target="_blank" class="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 bg-white text-slate-950 px-10 py-4 rounded-full text-xs font-black shadow-2xl hover:bg-slate-200 transition-all opacity-0 pointer-events-none translate-y-8">
-                            MỞ PHÒNG HỌP ZOOM/MEET <i data-lucide="external-link" class="ml-2 w-4 h-4"></i>
-                        </a>
-                    </div>
-                    
-                    <!-- Controls -->
-                    <div class="mt-6 flex flex-wrap items-center justify-between gap-4 px-2">
-                        <div class="flex items-center">
-                            <div class="flex -space-x-3" id="live-avatars-container">
-                                <img src="https://i.pravatar.cc/100?u=4" class="w-9 h-9 rounded-full border-2 border-slate-900 shadow-xl" alt="Member">
-                                <img src="https://i.pravatar.cc/100?u=5" class="w-9 h-9 rounded-full border-2 border-slate-900 shadow-xl" alt="Member">
-                            </div>
-                            <!-- SỐ NGƯỜI THẬT THAM GIA LIVE -->
-                            <div id="live-online-count" class="ml-4 bg-slate-800 border-2 border-slate-900 px-3 py-1.5 rounded-full flex items-center justify-center text-[11px] text-white font-black shadow-lg">
-                                <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-                                <span id="real-count-text">1</span> ĐANG XEM
-                            </div>
-                        </div>
-                        
-                        <div id="admin-camera-controls" class="hidden flex items-center gap-3">
-                            <button id="btn-camera" title="Bật/Tắt Camera" class="w-10 h-10 bg-slate-800 text-slate-400 rounded-xl hover:text-white transition-all flex items-center justify-center border border-slate-700 active:scale-90">
-                                <i data-lucide="video-off" class="w-5 h-5"></i>
-                            </button>
-                            <button id="btn-mic" title="Bật/Tắt Mic" class="w-10 h-10 bg-slate-800 text-slate-400 rounded-xl hover:text-white transition-all flex items-center justify-center border border-slate-700 active:scale-90">
-                                <i data-lucide="mic-off" class="w-5 h-5"></i>
-                            </button>
-                            <button id="btn-share-screen" title="Chia sẻ màn hình" class="w-10 h-10 bg-slate-800 text-slate-400 rounded-xl hover:text-white transition-all flex items-center justify-center border border-slate-700 active:scale-90">
-                                <i data-lucide="monitor-up" class="w-5 h-5"></i>
-                            </button>
-                            <button id="btn-broadcast" class="px-5 h-10 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-500 shadow-lg transition-all flex items-center gap-2 active:scale-95">
-                                <i data-lucide="play" class="w-4 h-4"></i> BẮT ĐẦU LIVE
-                            </button>
-                        </div>
-                        
-                        <div class="flex gap-2">
-                            <button class="w-9 h-9 bg-slate-800/50 text-slate-500 rounded-xl flex items-center justify-center hover:text-white transition"><i data-lucide="share-2" class="w-4 h-4"></i></button>
-                            <button class="w-9 h-9 bg-slate-800/50 text-slate-500 rounded-xl flex items-center justify-center hover:text-white transition" onclick="toggleFullScreen()"><i data-lucide="maximize" class="w-4 h-4"></i></button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Chat Sidebar -->
-                <div class="w-full lg:w-[420px] border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col h-[550px] lg:h-full bg-slate-900/60 backdrop-blur-xl">
-                    <div class="p-6 border-b border-slate-800 flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="p-2 bg-blue-500/10 rounded-lg text-blue-500"><i data-lucide="message-square" class="w-4 h-4"></i></div>
-                            <h3 class="text-white text-xs font-black uppercase tracking-widest">Trò chuyện online</h3>
-                        </div>
-                        <span id="chat-count" class="text-[9px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-full shadow-lg tracking-widest text-center">0</span>
-                    </div>
-
-                    <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-6">
-                        <div class="flex justify-center py-20 text-slate-400 text-[10px] font-black uppercase tracking-widest italic animate-pulse text-center">
-                            Đang kết nối...
-                        </div>
-                    </div>
-
-                    <div class="p-5 bg-slate-900 border-t border-slate-800">
-                        <div class="mb-4">
-                            <input type="text" id="user-nickname" placeholder="Tên hiển thị..." 
-                                   class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-[11px] text-slate-200 outline-none focus:border-blue-500 font-bold transition-all">
-                        </div>
-                        <div class="flex gap-2">
-                            <input type="text" id="chat-input" placeholder="Viết tin nhắn..." 
-                                   class="flex-1 bg-slate-800 border-none rounded-xl px-5 py-3 text-xs text-slate-200 outline-none focus:ring-2 focus:ring-blue-600 transition-all shadow-inner">
-                            <button id="btn-send-chat" class="w-12 h-12 zalo-blue text-white rounded-xl flex items-center justify-center shadow-2xl hover:scale-105 active:scale-95 transition-all">
-                                <i data-lucide="send" class="w-5 h-5"></i>
-                            </button>
-                        </div>
+                    <!-- Control Overlay -->
+                    <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/40 backdrop-blur-md p-2 rounded-2xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button class="w-10 h-10 rounded-xl bg-white/10 hover:bg-red-500 text-white flex items-center justify-center transition-colors"><i data-lucide="mic-off" class="w-4 h-4"></i></button>
+                        <button class="w-10 h-10 rounded-xl bg-white/10 hover:bg-blue-500 text-white flex items-center justify-center transition-colors"><i data-lucide="video" class="w-4 h-4"></i></button>
+                        <button class="w-10 h-10 rounded-xl bg-white/10 hover:bg-emerald-500 text-white flex items-center justify-center transition-colors"><i data-lucide="monitor-up" class="w-4 h-4"></i></button>
+                        <div class="w-px h-6 bg-white/20 mx-1"></div>
+                        <button class="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center animate-pulse"><i data-lucide="phone-off" class="w-4 h-4"></i></button>
                     </div>
                 </div>
             </div>
-        </section>
 
-        <!-- Notification Grids -->
-        <section id="events" class="pt-10">
-            <div class="flex items-center gap-3 mb-10">
-                <div class="w-1.5 h-8 zalo-blue rounded-full shadow-[0_0_10px_rgba(0,104,255,0.5)]"></div>
-                <h2 class="text-2xl font-black tracking-tighter uppercase text-slate-900">Thông báo cư dân</h2>
+            <!-- MEMBER HUB -->
+            <div class="card-hub p-6 space-y-6">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-extrabold flex items-center gap-2 uppercase tracking-wide">
+                        <i data-lucide="users" class="w-4 h-4 zalo-text"></i> Member Participation Hub
+                    </h2>
+                    <span class="text-[10px] font-bold text-slate-400" id="user-count">0 THÀNH VIÊN</span>
+                </div>
+                
+                <div id="online-users-list" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-4">
+                    <!-- Dữ liệu Live thật sẽ đổ vào đây -->
+                    <div class="col-span-full py-8 text-center border-2 border-dashed border-slate-100 rounded-2xl">
+                        <i data-lucide="user-plus" class="w-8 h-8 text-slate-200 mx-auto mb-2"></i>
+                        <p class="text-slate-400 text-[10px] font-medium uppercase tracking-tight">Chưa có cư dân tham gia</p>
+                    </div>
+                </div>
             </div>
-            <div id="events-grid" class="grid md:grid-cols-3 gap-8"></div>
-        </section>
-        
-        <section id="resources" class="bg-slate-950 rounded-[3.5rem] p-10 md:p-16 text-white relative overflow-hidden shadow-2xl">
-            <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600 rounded-full blur-[200px] opacity-10 -mr-60 -mt-60"></div>
-            <h2 class="text-3xl font-black mb-12 flex items-center gap-4 uppercase"><i data-lucide="folder-search" class="text-blue-500"></i> Thư viện số Ecohome</h2>
-            <div id="resources-grid" class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10"></div>
-        </section>
+        </div>
 
-        <div class="grid lg:grid-cols-2 gap-16 pt-10">
-            <section id="faq">
-                <h2 class="text-xl font-black mb-8 uppercase tracking-[0.2em] text-slate-400 italic text-center md:text-left">Hỏi đáp cư dân</h2>
-                <div id="faq-list" class="space-y-4"></div>
-            </section>
-            <section id="team">
-                <h2 class="text-xl font-black mb-8 uppercase tracking-[0.2em] text-slate-400 italic text-center md:text-left">Ban Quản Trị</h2>
-                <div id="team-grid" class="grid sm:grid-cols-2 gap-8 text-center md:text-left"></div>
-            </section>
+        <!-- Right Column: AI & Infrastructure -->
+        <div class="lg:col-span-4 space-y-6">
+            
+            <!-- AI CHAT HUB -->
+            <div class="card-hub flex flex-col h-[550px]">
+                <div class="zalo-blue p-5 text-white flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-white/20 p-2 rounded-xl">
+                            <i data-lucide="bot" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xs font-extrabold leading-tight uppercase">AI Assistant Hub</h3>
+                            <p class="text-[9px] text-blue-100 opacity-80">Trực tuyến 24/7</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="chat-content" class="flex-1 p-5 flex flex-col gap-4 bg-slate-50/50">
+                    <div class="ai-msg p-4 text-xs shadow-sm max-w-[85%] leading-relaxed border border-slate-100">
+                        Chào Ban Quản Trị! Tôi là trợ lý AI. Tôi đang hỗ trợ theo dõi các hub và trả lời thắc mắc của cư dân.
+                    </div>
+                </div>
+
+                <div class="p-4 bg-white border-t border-slate-100">
+                    <div class="flex gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                        <input type="text" id="ai-input" 
+                               class="flex-1 bg-transparent border-none px-3 py-2 text-xs focus:outline-none" 
+                               placeholder="Gửi thông báo hoặc hỏi AI..."
+                               onkeypress="if(event.key === 'Enter') sendAIMessage()">
+                        <button onclick="sendAIMessage()" id="ai-send-btn" class="zalo-blue text-white p-2 rounded-lg transition-all active:scale-95">
+                            <i data-lucide="send" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INFRASTRUCTURE HUB (ADMIN EDITABLE) -->
+            <div class="card-hub p-6 space-y-5">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-extrabold flex items-center gap-2 uppercase tracking-wide">
+                        <i data-lucide="settings" class="w-4 h-4 zalo-text"></i> Infra Hub (Admin)
+                    </h2>
+                </div>
+                
+                <div class="space-y-5">
+                    <!-- Item 1 -->
+                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <div class="flex justify-between items-center mb-2">
+                            <input type="text" class="editable-input text-[10px] uppercase text-slate-400" value="Thang máy Block A">
+                        </div>
+                        <input type="text" class="editable-input text-xs text-emerald-600" value="Hoạt động bình thường">
+                    </div>
+                    <!-- Item 2 -->
+                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <div class="flex justify-between items-center mb-2">
+                            <input type="text" class="editable-input text-[10px] uppercase text-slate-400" value="Hệ thống PCCC">
+                        </div>
+                        <input type="text" class="editable-input text-xs text-blue-600" value="Đang kiểm định định kỳ">
+                    </div>
+                    <!-- Item 3 -->
+                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <div class="flex justify-between items-center mb-2">
+                            <input type="text" class="editable-input text-[10px] uppercase text-slate-400" value="Bể bơi tầng 3">
+                        </div>
+                        <input type="text" class="editable-input text-xs text-amber-600" value="Vệ sinh: 14h - 16h">
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 text-[9px] text-slate-400 bg-slate-50 p-2 rounded-lg">
+                    <i data-lucide="info" class="w-3 h-3"></i>
+                    <span>Nội dung tự động lưu sau khi nhập</span>
+                </div>
+            </div>
         </div>
     </main>
 
-    <!-- Global Logic -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, setDoc, doc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <script>
+        const apiKey = ""; 
 
-        // CẤU HÌNH FIREBASE MẶC ĐỊNH
-        const firebaseConfig = { 
-            apiKey : "AIzaSyDBUVcplsEY79RkAyqVw3QVd4YI5zb2alQ" , 
-            authDomain : "eco-chatlive.firebaseapp.com" , 
-            projectId : "eco-chatlive" , 
-            storageBucket : "eco-chatlive.firebasestorage.app" , 
-            messagingSenderId : "498040518602" , 
-            appId : "1:498040518602:web:4ad7dd98907e78f2630133" , 
-            measurementId : "G-R7ZZG0FQJ3" 
-        };
-
-        const ADMIN_PIN = "215151365"; 
-        const DEFAULT_SHEET = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkFqCn6PiS7aQk1tLGCIO1f7Q1AHhvmRS-hminsP_ZZJqczgpLhSw7mbk9Yjo5fY2wgxR8kY5L9f42/pub?output=csv";
-        
-        const safeGet = (k) => { try { return localStorage.getItem(k); } catch(e) { return null; } };
-        const safeSet = (k, v) => { try { localStorage.setItem(k, v); } catch(e) {} };
-
-        let DATA_URL = safeGet('zalo_hub_sheet_url') || DEFAULT_SHEET;
-        let CUSTOM_FIREBASE = safeGet('zalo_hub_fb_config');
-        let currentUser = null;
-        let localStream = null;
-        let isSharingScreen = false;
-        let db, auth, appId;
-
-        const initFirebase = () => {
-            try {
-                let config = firebaseConfig;
-                if (CUSTOM_FIREBASE) {
-                    try { config = JSON.parse(CUSTOM_FIREBASE); } catch(e) { console.error("Lỗi JSON Firebase"); }
-                }
-                const app = initializeApp(config);
-                auth = getAuth(app);
-                db = getFirestore(app);
-                appId = config.projectId || 'eco-chatlive';
-                return true;
-            } catch (e) {
-                console.error("Firebase Init Error:", e);
-                return false;
-            }
-        };
-
-        async function performAuth() {
-            if (!auth) return;
-            try {
-                await signInAnonymously(auth);
-            } catch (err) { console.error("Auth Error:", err); }
-        }
-
-        const startSync = () => {
-            if (initFirebase()) {
-                performAuth();
-                onAuthStateChanged(auth, (user) => {
-                    currentUser = user;
-                    if (user) {
-                        listenToChat();
-                        startPresence(); // Khởi động đếm người online
-                    }
-                });
-            }
-        };
-
-        // --- PRESENCE LOGIC (ĐẾM NGƯỜI THẬT) ---
-        async function startPresence() {
-            if (!currentUser || !db) return;
-            
-            // Hàm cập nhật trạng thái online
-            const updateOnlineStatus = async () => {
-                const presenceDoc = doc(db, 'artifacts', appId, 'public', 'data', 'presence', currentUser.uid);
-                await setDoc(presenceDoc, {
-                    lastActive: serverTimestamp(),
-                    uid: currentUser.uid
-                });
+        // --- AI ASSISTANT ---
+        async function askAI(userQuery) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: "Bạn là trợ lý ảo hỗ trợ BQT Ecohome Nhơn Bình. Phản hồi ngắn gọn, tập trung vào công việc quản lý tòa nhà và hỗ trợ cư dân." }] }
             };
 
-            // Cập nhật ngay khi vào và định kỳ mỗi 30s
-            updateOnlineStatus();
-            setInterval(updateOnlineStatus, 30000);
-
-            // Lắng nghe danh sách đang online
-            const presenceCol = collection(db, 'artifacts', appId, 'public', 'data', 'presence');
-            onSnapshot(presenceCol, (snapshot) => {
-                const now = Math.floor(Date.now() / 1000);
-                let onlineCount = 0;
-                
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    // Nếu hoạt động trong vòng 60 giây gần nhất thì tính là đang online
-                    if (data.lastActive && (now - data.lastActive.seconds < 60)) {
-                        onlineCount++;
-                    }
-                });
-
-                const countEl = document.getElementById('real-count-text');
-                if (countEl) countEl.innerText = onlineCount > 0 ? onlineCount : 1;
-            }, (err) => console.error("Presence Sync Error:", err));
-        }
-
-        // --- CHAT LOGIC ---
-        async function sendChatMessage() {
-            const input = document.getElementById('chat-input');
-            const nameInput = document.getElementById('user-nickname');
-            const text = input.value.trim();
-            const nickname = nameInput.value.trim() || "Cư dân Ecohome";
-            if (!text || !currentUser || !db) return;
-            try {
-                const chatCol = collection(db, 'artifacts', appId, 'public', 'data', 'messages');
-                await addDoc(chatCol, { text, sender: nickname, uid: currentUser.uid, timestamp: serverTimestamp() });
-                input.value = '';
-                safeSet('chat_nickname', nickname);
-            } catch (err) { console.error("Chat Send Error:", err); }
-        }
-
-        function listenToChat() {
-            if (!currentUser || !db) return;
-            const chatCol = collection(db, 'artifacts', appId, 'public', 'data', 'messages');
-            onSnapshot(chatCol, (snapshot) => {
-                const messages = [];
-                snapshot.forEach(doc => messages.push({ id: doc.id, ...doc.data() }));
-                messages.sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
-                const countEl = document.getElementById('chat-count');
-                if (countEl) countEl.innerText = messages.length;
-                renderMessages(messages.slice(-50));
-            }, (err) => console.error("Chat Sync Error:", err));
-        }
-
-        function renderMessages(messages) {
-            const container = document.getElementById('chat-messages');
-            if (!container) return;
-            if (messages.length === 0) {
-                container.innerHTML = `<div class="text-center py-20 text-slate-700 text-[10px] font-black uppercase tracking-widest opacity-50 italic">Sẵn sàng trò chuyện...</div>`;
-                return;
-            }
-            container.innerHTML = messages.map(msg => {
-                const isMe = msg.uid === currentUser?.uid;
-                return `
-                    <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <span class="text-[9px] font-black text-slate-500 mb-1.5 px-1 uppercase tracking-tighter">${msg.sender || 'Cư dân'}</span>
-                        <div class="max-w-[85%] px-5 py-3 shadow-2xl text-xs leading-relaxed ${isMe ? 'chat-bubble-me' : 'chat-bubble-other'}">
-                            ${msg.text}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            container.scrollTop = container.scrollHeight;
-        }
-
-        // --- MEDIA LOGIC ---
-        async function toggleCamera() {
-            if (isSharingScreen) stopLocalStream();
-            const videoElement = document.getElementById('local-video');
-            const placeholder = document.getElementById('video-placeholder');
-            const btn = document.getElementById('btn-camera');
-            if (!localStream) {
+            let delay = 1000;
+            for (let i = 0; i < 5; i++) {
                 try {
-                    localStream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 }, audio: true });
-                    videoElement.srcObject = localStream;
-                    videoElement.classList.add('mirror-mode');
-                    videoElement.classList.remove('hidden');
-                    placeholder.classList.add('hidden');
-                    btn.classList.add('bg-blue-600', 'text-white');
-                    btn.innerHTML = '<i data-lucide="video"></i>';
-                    lucide.createIcons();
-                } catch (err) { alert("Vui lòng cho phép quyền Camera/Micro."); }
-            } else { stopLocalStream(); btn.innerHTML = '<i data-lucide="video-off"></i>'; lucide.createIcons(); }
-        }
-
-        async function toggleScreenShare() {
-            if (localStream && !isSharingScreen) stopLocalStream();
-            const videoElement = document.getElementById('local-video');
-            const placeholder = document.getElementById('video-placeholder');
-            const btn = document.getElementById('btn-share-screen');
-            if (!isSharingScreen) {
-                try {
-                    localStream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: true });
-                    isSharingScreen = true;
-                    videoElement.srcObject = localStream;
-                    videoElement.classList.remove('mirror-mode', 'hidden');
-                    placeholder.classList.add('hidden');
-                    btn.classList.add('bg-blue-600', 'text-white');
-                    btn.innerHTML = '<i data-lucide="monitor-off"></i>';
-                    lucide.createIcons();
-                    localStream.getVideoTracks()[0].onended = () => stopScreenShare();
-                } catch (err) {
-                    if (err.name === 'NotAllowedError') alert("Google Sites chặn chia sẻ màn hình. Hãy dùng nút 'MỞ TRANG LIVE RIÊNG' để thực hiện.");
-                }
-            } else { stopScreenShare(); }
-        }
-
-        function stopLocalStream() {
-            if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
-            document.getElementById('local-video').classList.add('hidden');
-            document.getElementById('video-placeholder').classList.remove('hidden');
-            document.getElementById('btn-camera').classList.remove('bg-blue-600', 'text-white');
-            document.getElementById('btn-share-screen').classList.remove('bg-blue-600', 'text-white');
-            isSharingScreen = false;
-        }
-
-        function stopScreenShare() { stopLocalStream(); document.getElementById('btn-share-screen').innerHTML = '<i data-lucide="monitor-up"></i>'; lucide.createIcons(); }
-
-        function toggleMic() {
-            if (localStream) {
-                const audioTrack = localStream.getAudioTracks()[0];
-                if (audioTrack) {
-                    audioTrack.enabled = !audioTrack.enabled;
-                    const btn = document.getElementById('btn-mic');
-                    btn.innerHTML = audioTrack.enabled ? '<i data-lucide="mic"></i>' : '<i data-lucide="mic-off"></i>';
-                    btn.classList.toggle('bg-blue-600', audioTrack.enabled);
-                    btn.classList.toggle('text-white', audioTrack.enabled);
-                    lucide.createIcons();
-                }
-            }
-        }
-
-        function startBroadcast() {
-            const btn = document.getElementById('btn-broadcast');
-            const label = document.getElementById('meeting-label');
-            if (btn.innerText.includes("BẮT ĐẦU")) {
-                btn.innerText = "DỪNG LIVE";
-                btn.classList.replace('bg-blue-600', 'bg-red-600');
-                label.innerText = isSharingScreen ? "ĐANG CHIA SẺ MÀN HÌNH" : "ĐANG PHÁT TRỰC TIẾP";
-                label.classList.add('text-red-500');
-            } else {
-                btn.innerText = "BẮT ĐẦU LIVE";
-                btn.classList.replace('bg-red-600', 'bg-blue-600');
-                label.innerText = "Truyền hình cư dân";
-                label.classList.remove('text-red-500');
-            }
-            lucide.createIcons();
-        }
-
-        async function fetchAppData() {
-            try {
-                const response = await fetch(DATA_URL);
-                const text = await response.text();
-                const rows = [];
-                const lines = text.split(/\r?\n/);
-                for (let line of lines) {
-                    if (!line.trim()) continue;
-                    const row = []; let curr = '', inQ = false;
-                    for (let i = 0; i < line.length; i++) {
-                        let c = line[i];
-                        if (c === '"') { if (inQ && line[i+1] === '"') { curr += '"'; i++; } else inQ = !inQ; }
-                        else if (c === ',' && !inQ) { row.push(curr.trim()); curr = ''; } else curr += c;
-                    }
-                    row.push(curr.trim()); rows.push(row);
-                }
-                if (rows.length > 1) {
-                    const cat = { event: [], resource: [], faq: [], team: [], meeting: [] };
-                    rows.slice(1).forEach(r => {
-                        const type = r[0]?.toLowerCase().trim();
-                        if (cat[type]) cat[type].push({ title: r[1], sub: r[2], desc: r[3], extra: r[4] });
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
                     });
-                    renderUI(cat);
-                }
-            } catch (e) { console.error("Sheets Load Error:", e); }
-        }
-
-        function renderUI(cat) {
-            const mTitle = document.getElementById('meeting-title');
-            const mDesc = document.getElementById('meeting-desc');
-            const mBtn = document.getElementById('meeting-btn');
-            if (cat.meeting.length > 0) {
-                const m = cat.meeting[0];
-                if (mTitle) mTitle.innerText = m.title;
-                if (mDesc) mDesc.innerText = m.desc || "Họp cư dân trực tuyến.";
-                if (mBtn && m.extra && m.extra !== '#') { mBtn.href = m.extra; mBtn.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-8'); }
+                    if (response.ok) {
+                        const data = await response.json();
+                        return data.candidates?.[0]?.content?.parts?.[0]?.text || "...";
+                    }
+                } catch (e) {}
+                await new Promise(r => setTimeout(r, delay));
+                delay *= 2;
             }
-            document.getElementById('events-grid').innerHTML = cat.event.map(e => `
-                <div class="bg-white p-8 rounded-[3rem] card-anim border border-slate-200/40 shadow-sm flex flex-col h-full text-center">
-                    <div class="text-blue-600 font-black text-3xl mb-3 italic tracking-tighter">${e.sub || ''}</div>
-                    <h4 class="font-bold text-xl mb-4 leading-tight text-slate-900 text-center">${e.title || ''}</h4>
-                    <p class="text-slate-500 text-xs mb-8 flex-grow leading-relaxed line-clamp-4 text-center">${e.desc || ''}</p>
-                    <a href="${e.extra || '#'}" target="_blank" class="text-[11px] font-black zalo-text uppercase tracking-[0.2em] flex items-center justify-center gap-2 group mt-auto transition-all text-center">CHI TIẾT <i data-lucide="arrow-right" class="w-4 h-4 transition-transform group-hover:translate-x-2 text-center"></i></a>
-                </div>
-            `).join('');
-            document.getElementById('resources-grid').innerHTML = cat.resource.map(r => `
-                <div class="p-8 bg-white/5 border border-white/10 rounded-[2.5rem] hover:bg-white/10 transition-all cursor-pointer group">
-                    <div class="text-blue-500 text-[10px] font-black uppercase tracking-widest mb-3">${r.sub || 'Dữ liệu'}</div>
-                    <h4 class="font-bold text-base mb-6 leading-tight group-hover:text-blue-400 transition text-left">${r.title || ''}</h4>
-                    <a href="${r.extra || '#'}" target="_blank" class="text-[10px] text-slate-400 flex justify-between items-center font-black group-hover:text-white transition">TRUY CẬP <i data-lucide="external-link" class="w-4 h-4"></i></a>
-                </div>
-            `).join('');
-            document.getElementById('faq-list').innerHTML = cat.faq.map(f => `
-                <details class="bg-white p-6 rounded-[2rem] border border-slate-200/40 group cursor-pointer shadow-sm hover:border-blue-300 transition text-left">
-                    <summary class="font-bold text-base flex justify-between list-none items-center pr-3 text-slate-800">
-                        ${f.title || ''} <i data-lucide="chevron-down" class="w-5 h-5 text-slate-300 group-open:rotate-180 transition-transform text-center"></i>
-                    </summary>
-                    <div class="pt-5 text-slate-500 text-sm leading-relaxed border-t border-slate-50 mt-5 text-center">${f.sub || ''}</div>
-                </details>
-            `).join('');
-            document.getElementById('team-grid').innerHTML = cat.team.map(t => `
-                <div class="flex flex-col items-center gap-4 bg-white p-8 rounded-[3rem] border border-slate-200/40 card-anim shadow-sm text-center">
-                    <img src="${t.extra || 'https://i.pravatar.cc/150'}" class="w-20 h-20 rounded-[2rem] object-cover shadow-2xl mx-auto" alt="Admin">
-                    <div>
-                        <h4 class="font-black text-sm text-slate-900">${t.title || ''}</h4>
-                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-4">${t.sub || ''}</p>
-                        <a href="https://zalo.me/${t.desc || ''}" target="_blank" class="text-[10px] font-black zalo-text hover:underline flex items-center justify-center gap-1.5"><i data-lucide="message-square" class="w-3 h-3 text-center"></i> NHẮN ZALO</a>
-                    </div>
-                </div>
-            `).join('');
-            lucide.createIcons();
+            return "Không thể kết nối AI lúc này.";
         }
 
-        const setupApp = () => {
-            lucide.createIcons(); startSync();
-            const loader = document.getElementById('app-loader');
-            const loginOverlay = document.getElementById('login-overlay');
-            const loginCard = document.getElementById('login-card');
-            const pinInput = document.getElementById('admin-pin');
-            const errorMsg = document.getElementById('login-error');
-            
-            const handleLogin = () => {
-                const pinVal = String(pinInput.value).replace(/\s/g, ''); 
-                if (pinVal === ADMIN_PIN) {
-                    loginOverlay.classList.add('opacity-0', 'pointer-events-none');
-                    document.getElementById('admin-status-bar').classList.remove('hidden');
-                    document.getElementById('admin-camera-controls').classList.remove('hidden');
-                    document.getElementById('main-content').classList.remove('opacity-0');
-                    errorMsg.classList.add('hidden');
-                    fetchAppData();
-                } else {
-                    errorMsg.classList.remove('hidden');
-                    loginCard.classList.add('shake-anim');
-                    setTimeout(() => loginCard.classList.remove('shake-anim'), 400);
-                    pinInput.value = '';
-                    pinInput.focus();
-                }
-            };
-            
-            document.getElementById('btn-login-confirm').onclick = handleLogin;
-            pinInput.onkeypress = (e) => { if (e.key === 'Enter') handleLogin(); };
-            document.getElementById('btn-bypass').onclick = () => { 
-                loginOverlay.classList.add('opacity-0', 'pointer-events-none'); 
-                document.getElementById('main-content').classList.remove('opacity-0'); 
-                fetchAppData(); 
-            };
-            
-            document.getElementById('toggle-pin-view').onclick = () => {
-                const type = pinInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                pinInput.setAttribute('type', type);
-                document.getElementById('pin-icon').setAttribute('data-lucide', type === 'password' ? 'eye' : 'eye-off');
-                lucide.createIcons();
-            };
+        async function sendAIMessage() {
+            const input = document.getElementById('ai-input');
+            const content = document.getElementById('chat-content');
+            const btn = document.getElementById('ai-send-btn');
+            const text = input.value.trim();
 
-            document.getElementById('btn-popout-admin').onclick = () => {
-                const blob = new Blob([document.documentElement.outerHTML], {type: 'text/html'});
-                window.open(URL.createObjectURL(blob), '_blank');
-            };
+            if (!text) return;
 
-            document.getElementById('btn-toggle-settings').onclick = () => {
-                document.getElementById('settings-modal').classList.remove('hidden');
-                document.getElementById('sheet-url').value = DATA_URL;
-                document.getElementById('firebase-config-input').value = CUSTOM_FIREBASE || "";
-            };
-            document.getElementById('btn-close-settings').onclick = () => document.getElementById('settings-modal').classList.add('hidden');
-            document.getElementById('btn-save-settings').onclick = () => {
-                const sheetVal = document.getElementById('sheet-url').value.trim();
-                const fbVal = document.getElementById('firebase-config-input').value.trim();
-                if (sheetVal) safeSet('zalo_hub_sheet_url', sheetVal);
-                if (fbVal) safeSet('zalo_hub_fb_config', fbVal);
-                location.reload();
-            };
+            content.innerHTML += `<div class="user-msg p-3 text-xs shadow-sm max-w-[85%] self-end"><b>Admin:</b> ${text}</div>`;
+            input.value = "";
+            input.disabled = true;
+            btn.disabled = true;
+            content.scrollTop = content.scrollHeight;
 
-            document.getElementById('btn-send-chat').onclick = sendChatMessage;
-            document.getElementById('chat-input').onkeypress = (e) => { if (e.key === 'Enter') sendChatMessage(); };
-            document.getElementById('btn-camera').onclick = toggleCamera;
-            document.getElementById('btn-mic').onclick = toggleMic;
-            document.getElementById('btn-share-screen').onclick = toggleScreenShare;
-            document.getElementById('btn-broadcast').onclick = startBroadcast;
+            const loadingId = 'loading-' + Date.now();
+            content.innerHTML += `<div id="${loadingId}" class="ai-msg p-3 text-[10px] italic text-slate-400">AI đang xử lý...</div>`;
+            content.scrollTop = content.scrollHeight;
+
+            try {
+                const reply = await askAI(text);
+                document.getElementById(loadingId).remove();
+                content.innerHTML += `<div class="ai-msg p-4 text-xs shadow-sm max-w-[85%] border border-slate-100"><b>AI:</b> ${reply}</div>`;
+            } catch {
+                document.getElementById(loadingId).innerText = "Lỗi phản hồi.";
+            } finally {
+                input.disabled = false;
+                btn.disabled = false;
+                input.focus();
+                content.scrollTop = content.scrollHeight;
+            }
+        }
+
+        // --- DASHBOARD INIT ---
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
             
+            // Đồng hồ hệ thống
             setInterval(() => { 
                 const el = document.getElementById('current-time'); 
-                if (el) el.innerText = new Date().toTimeString().split(' ')[0]; 
+                if (el) el.innerText = new Date().toLocaleTimeString('vi-VN'); 
             }, 1000);
             
+            // Xử lý loader
             setTimeout(() => { 
-                if (loader) { loader.style.opacity = '0'; setTimeout(() => loader.style.display='none', 500); } 
-            }, 800);
-        };
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', setupApp);
-        } else {
-            setupApp();
-        }
-
-        const savedNick = safeGet('chat_nickname');
-        if (savedNick) document.getElementById('user-nickname').value = savedNick;
-        window.toggleFullScreen = () => { 
-            const c = document.getElementById('video-container'); 
-            if (c.requestFullscreen) c.requestFullscreen(); 
-            else if (c.webkitRequestFullscreen) c.webkitRequestFullscreen(); 
-        }
+                const loader = document.getElementById('loader');
+                if (loader) { 
+                    loader.style.opacity = '0'; 
+                    setTimeout(() => loader.style.display='none', 500); 
+                } 
+            }, 1000);
+        });
     </script>
 </body>
 </html>
